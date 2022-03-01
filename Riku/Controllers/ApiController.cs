@@ -54,8 +54,6 @@ namespace Riku.Controllers {
                 ConnectionInfo connection = Request.HttpContext.Connection;
                 String response = JsonConvert.SerializeObject(new {
                     Url = Request.GetDisplayUrl(),
-                    Ip = connection.RemoteIpAddress.ToString(),
-                    Port = connection.RemotePort.ToString(),
                     ClientIpv6 = connection.RemoteIpAddress.MapToIPv6().ToString(),
                     ClientIpv4 = connection.RemoteIpAddress.MapToIPv4().ToString(),
                     ClientPort = connection.RemotePort.ToString(),
