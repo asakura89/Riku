@@ -33,7 +33,13 @@ namespace Riku.Controllers {
         [HttpDelete]
         public String DeleteAction() => Return();
 
-        String Return() {
+        [Route("Status/{status}")]
+        [HttpGet]
+        public String ReturnStatusAction(Int32 status) => Return(status);
+
+        String Return() => Return(200);
+
+        String Return(Int32 status) {
             try {
                 String body = String.Empty;
                 using (var mem = new MemoryStream()) {
@@ -77,12 +83,15 @@ namespace Riku.Controllers {
                 var logger = HttpContext.RequestServices.GetService(typeof(ILogger<ApiController>)) as ILogger<ApiController>;
                 logger.LogInformation(response);
 
-                Response.StatusCode = 200;
+                Response.StatusCode = status;
                 return response;
             }
             catch (Exception ex) {
                 Response.StatusCode = 500;
-                return JsonConvert.SerializeObject(ex.AsActionResponseViewModel(), Formatting.Indented);
+                return JsonConvert.SerializeObject(new {
+                    Message = "Riku Error",
+                    Error = ex.AsActionResponseViewModel()
+                }, Formatting.Indented);
             }
         }
     }
