@@ -1,53 +1,50 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using Arvy;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
-namespace Riku.Controllers {
-    [ApiController]
-    public class ApiController : ControllerBase {
+namespace Riku.Controllers;
 
-        [Route("Post")]
-        [HttpPost]
-        public String PostAction() => Return();
+[ApiController]
+public class ApiController : ControllerBase {
 
-        [Route("Get")]
-        [HttpGet]
-        public String GetAction() => Return();
+    [Route("Post")]
+    [HttpPost]
+    public async Task<String> PostAction() => await Return();
 
-        [Route("Put")]
-        [HttpPut]
-        public String PutAction() => Return();
+    [Route("Get")]
+    [HttpGet]
+    public async Task<String> GetAction() => await Return();
 
-        [Route("Patch")]
-        [HttpPatch]
-        public String PatchAction() => Return();
+    [Route("Put")]
+    [HttpPut]
+    public async Task<String> PutAction() => await Return();
 
-        [Route("Delete")]
-        [HttpDelete]
-        public String DeleteAction() => Return();
+    [Route("Patch")]
+    [HttpPatch]
+    public async Task<String> PatchAction() => await Return();
 
-        [Route("Status/{status}")]
-        [HttpGet]
-        public String ReturnStatusAction(Int32 status) => Return(status);
+    [Route("Delete")]
+    [HttpDelete]
+    public async Task<String> DeleteAction() => await Return();
 
-        String Return() => Return(200);
+    [Route("Status/{status}")]
+    [HttpGet]
+    public async Task<String> ReturnStatusAction(Int32 status) => await Return(status);
 
-        String Return(Int32 status) {
+    async Task<String> Return() => await Return(200);
+
+    async Task<String> Return(Int32 status) =>
+        await Task.Run(async () => {
             try {
                 String body = String.Empty;
                 using (var mem = new MemoryStream()) {
                     using (var reader = new StreamReader(mem)) {
-                        Request.Body.CopyTo(mem);
+                        await Request.Body.CopyToAsync(mem);
                         mem.Seek(0, SeekOrigin.Begin);
                         //Request.Body.Position = 0;
-                        body = reader.ReadToEnd();
+                        body = await reader.ReadToEndAsync();
                     }
                 }
 
@@ -91,36 +88,35 @@ namespace Riku.Controllers {
                     Error = ex.AsActionResponseViewModel()
                 }, Formatting.Indented);
             }
-        }
+        });
+}
+
+public static class DictionaryExt {
+    public static IDictionary<String, String> AsDictionary(this IHeaderDictionary headers) => (headers as IEnumerable<KeyValuePair<String, StringValues>>).AsDictionary();
+
+    public static IDictionary<String, String> AsDictionary(this IQueryCollection queryStrings) => (queryStrings as IEnumerable<KeyValuePair<String, StringValues>>).AsDictionary();
+
+    public static IDictionary<String, String> AsDictionary(this IFormCollection form) => (form as IEnumerable<KeyValuePair<String, StringValues>>).AsDictionary();
+
+    public static IDictionary<String, String> AsDictionary(this IRequestCookieCollection cookies) {
+        var dictionary = new Dictionary<String, String>();
+        if (cookies == null)
+            return dictionary;
+
+        foreach (KeyValuePair<String, String> kv in cookies)
+            dictionary.Add(kv.Key, kv.Value);
+
+        return dictionary;
     }
 
-    public static class DictionaryExt {
-        public static IDictionary<String, String> AsDictionary(this IHeaderDictionary headers) => (headers as IEnumerable<KeyValuePair<String, StringValues>>).AsDictionary();
-
-        public static IDictionary<String, String> AsDictionary(this IQueryCollection queryStrings) => (queryStrings as IEnumerable<KeyValuePair<String, StringValues>>).AsDictionary();
-
-        public static IDictionary<String, String> AsDictionary(this IFormCollection form) => (form as IEnumerable<KeyValuePair<String, StringValues>>).AsDictionary();
-
-        public static IDictionary<String, String> AsDictionary(this IRequestCookieCollection cookies) {
-            var dictionary = new Dictionary<String, String>();
-            if (cookies == null)
-                return dictionary;
-
-            foreach (KeyValuePair<String, String> kv in cookies)
-                dictionary.Add(kv.Key, kv.Value);
-
+    static IDictionary<String, String> AsDictionary(this IEnumerable<KeyValuePair<String, StringValues>> collection) {
+        var dictionary = new Dictionary<String, String>();
+        if (collection == null)
             return dictionary;
-        }
 
-        static IDictionary<String, String> AsDictionary(this IEnumerable<KeyValuePair<String, StringValues>> collection) {
-            var dictionary = new Dictionary<String, String>();
-            if (collection == null)
-                return dictionary;
+        foreach (KeyValuePair<String, StringValues> kv in collection)
+            dictionary.Add(kv.Key, kv.Value);
 
-            foreach (KeyValuePair<String, StringValues> kv in collection)
-                dictionary.Add(kv.Key, kv.Value);
-
-            return dictionary;
-        }
+        return dictionary;
     }
 }
