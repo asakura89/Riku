@@ -8,6 +8,7 @@ indent_style = space
 indent_size = 4
 insert_final_newline = false
 trim_trailing_whitespace = true
+max_line_length = 120
 
 [*.sln]
 indent_style = tab
@@ -22,6 +23,8 @@ indent_size = 2
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
 
+csharp_using_directive_placement = outside_namespace:error
+
 csharp_new_line_before_open_brace = none
 csharp_new_line_before_else = true
 csharp_new_line_before_catch = true
@@ -31,6 +34,7 @@ csharp_new_line_before_members_in_anonymous_types = true
 csharp_new_line_between_query_expression_clauses = true
 
 csharp_indent_case_contents = true
+csharp_indent_case_contents_when_block = true
 csharp_indent_switch_labels = true
 csharp_indent_labels = no_change
 
@@ -48,6 +52,38 @@ csharp_space_between_method_call_empty_parameter_list_parentheses = false
 
 csharp_preserve_single_line_statements = false
 csharp_preserve_single_line_blocks = true
+
+csharp_indent_braces = false
+csharp_new_line_before_members_in_object_initializers = false
+csharp_preferred_modifier_order = public, private, protected, internal, new, abstract, virtual, sealed, override, static, readonly, extern, unsafe, volatile, async:suggestion
+csharp_prefer_braces = false:error
+csharp_space_after_comma = true
+csharp_space_after_dot = false
+csharp_space_after_semicolon_in_for_statement = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_before_comma = false
+csharp_space_before_dot = false
+csharp_space_before_open_square_brackets = false
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_between_method_declaration_name_and_open_parenthesis = false
+csharp_space_between_parentheses = false
+csharp_space_between_square_brackets = false
+csharp_style_expression_bodied_accessors = true:error
+csharp_style_expression_bodied_constructors = false:error
+csharp_style_expression_bodied_methods = true:error
+csharp_style_expression_bodied_properties = true:error
+csharp_style_var_elsewhere = true:error
+csharp_style_var_for_built_in_types = true:error
+csharp_style_var_when_type_is_apparent = true:error
+csharp_using_directive_placement = outside_namespace:silent
+dotnet_style_predefined_type_for_locals_parameters_members = false:error
+dotnet_style_predefined_type_for_member_access = false:error
+dotnet_style_qualification_for_event = false:error
+dotnet_style_qualification_for_field = false:error
+dotnet_style_qualification_for_method = false:error
+dotnet_style_qualification_for_property = false:error
+dotnet_style_require_accessibility_modifiers = never:error
 
 dotnet_naming_symbols.private_field_symbol.applicable_kinds = field,event,delegate
 dotnet_naming_symbols.private_field_symbol.applicable_accessibilities = private
@@ -91,21 +127,12 @@ dotnet_naming_rule.members_are_pascal_case.severity = error
 dotnet_naming_symbols.constant_fields.applicable_kinds = field
 dotnet_naming_symbols.constant_fields.applicable_accessibilities = *
 dotnet_naming_symbols.constant_fields.required_modifiers = const
+dotnet_naming_style.constant_fields_style.capitalization = pascal_case
 dotnet_naming_rule.constant_fields_should_be_pascal_case.symbols = constant_fields
-dotnet_naming_rule.constant_fields_should_be_pascal_case.style = pascal_case_style
+dotnet_naming_rule.constant_fields_should_be_pascal_case.style = constant_fields_style
 dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = error
 
 ## Code Styles
-[*.{cs,csx,cake}]
-dotnet_style_qualification_for_field = false:error
-dotnet_style_qualification_for_property = false:error
-dotnet_style_qualification_for_method = false:error
-dotnet_style_qualification_for_event = false:error
-
-dotnet_style_predefined_type_for_locals_parameters_members = false:error
-dotnet_style_predefined_type_for_member_access = false:error
-
-dotnet_style_require_accessibility_modifiers = never:error
 dotnet_style_readonly_field = true:error
 
 dotnet_style_parentheses_in_arithmetic_binary_operators = always_for_clarity:warning
@@ -128,13 +155,9 @@ dotnet_style_coalesce_expression = true:error
 dotnet_style_null_propagation = true:error
 
 csharp_style_var_for_built_in_types = false:error
-csharp_style_var_when_type_is_apparent = true:error
 csharp_style_var_elsewhere = false:error
 
-csharp_style_expression_bodied_methods = true:error
-csharp_style_expression_bodied_constructors = false:error
 csharp_style_expression_bodied_operators = false:error
-csharp_style_expression_bodied_properties = true:error
 csharp_style_expression_bodied_accessors = false:error
 csharp_style_expression_bodied_indexers = false:error
 
@@ -146,6 +169,10 @@ csharp_style_pattern_local_over_anonymous_function = false:error
 csharp_style_throw_expression = true:error
 csharp_style_conditional_delegate_call = true:warning
 
-csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:warning
 csharp_prefer_simple_default_expression = true:error
-csharp_prefer_braces = false:error
+
+
+[*.{appxmanifest,asax,ascx,aspx,build,config,cs,cshtml,csproj,css,dbml,discomap,dtd,htm,html,jsproj,lsproj,master,njsproj,nuspec,proj,props,razor,resw,resx,skin,StyleCop,targets,tasks,vb,vbproj,xaml,xamlx,xml,xoml,xsd}]
+indent_style = space
+indent_size = 4
+tab_width = 4

@@ -1,8 +1,4 @@
-# https://github.com/alexkaratarakis/gitattributes
-# Auto detect text files and perform LF normalization
-* text=auto
-
-# Visual Studio
+# > Visual Studio
 *.cs            text diff=csharp
 *.csx           text diff=csharp
 *.vb            text
@@ -47,7 +43,7 @@
 
 *.dll           binary
 
-# Documents
+# > Documents
 *.doc           diff=astextplain
 *.DOC           diff=astextplain
 *.docx          diff=astextplain
@@ -72,7 +68,7 @@
 *.tsv           text
 
 
-# Graphics
+# > Graphics
 *.png           binary
 *.jpg           binary
 *.jpeg          binary
@@ -84,7 +80,7 @@
 *.eps           binary
 
 
-# Other
+# > Other
 *.sh            text
 *.cmd           text
 *.sql           text
@@ -99,7 +95,7 @@
 *.resx          text
 
 
-# Custom
+# > Custom
 *.ejx           text
 *.min.ejx       binary
 *.eqx           text
