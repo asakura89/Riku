@@ -1,3 +1,7 @@
+using System.Text;
+using System.Xml;
+using Microsoft.AspNetCore.Mvc.Formatters;
+
 namespace Riku;
 
 public class Startup {
@@ -8,8 +12,22 @@ public class Startup {
     public IConfiguration Configuration { get; }
 
     public void ConfigureServices(IServiceCollection services) =>
-        services.AddMvc(options =>
-            options.EnableEndpointRouting = false);
+        services
+            .AddMvc()
+            .AddXmlSerializerFormatters()
+            .AddMvcOptions(options => {
+                options.EnableEndpointRouting = false;
+                options.OutputFormatters.Add(
+                    new XmlDataContractSerializerOutputFormatter(
+                        new XmlWriterSettings {
+                            Encoding = Encoding.UTF8,
+                            NamespaceHandling = NamespaceHandling.OmitDuplicates,
+                            Async = true,
+                            OmitXmlDeclaration = true
+                        }
+                    )
+                );
+            });
 
     public void Configure(IApplicationBuilder webAppBuilder) {
         webAppBuilder.UseMvc();
