@@ -1,6 +1,6 @@
+using System.Text.Json;
 using Arvy;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using RyaNG;
 
 namespace Riku.Controllers;
@@ -41,10 +41,14 @@ public class AjaxController : ControllerBase {
             catch (Exception ex) {
                 Response.StatusCode = 500;
                 return new[] {
-                    JsonConvert.SerializeObject(new {
-                        Message = "Riku Error",
-                        Error = ex.AsActionResponseViewModel()
-                    }, Formatting.Indented)
+                    JsonSerializer
+                        .Serialize(
+                            new {
+                                Message = "Riku Error",
+                                Error = ex.AsActionResponseViewModel()
+                            },
+                            typeof(Object),
+                            new JsonSerializerOptions { WriteIndented = true })
                 };
             }
         });

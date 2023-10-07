@@ -1,8 +1,8 @@
+using System.Text.Json;
 using Arvy;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using Newtonsoft.Json;
 
 namespace Riku.Controllers;
 
@@ -49,31 +49,36 @@ public class ApiController : ControllerBase {
                 }
 
                 ConnectionInfo connection = Request.HttpContext.Connection;
-                String response = JsonConvert.SerializeObject(new {
-                    Url = Request.GetDisplayUrl(),
-                    ClientIpv6 = connection.RemoteIpAddress.MapToIPv6().ToString(),
-                    ClientIpv4 = connection.RemoteIpAddress.MapToIPv4().ToString(),
-                    ClientPort = connection.RemotePort.ToString(),
-                    Request.IsHttps,
-                    Request.Scheme,
-                    Request.Protocol,
-                    Request.Method,
-                    Request.ContentLength,
-                    Request.ContentType,
-                    Headers = Request.Headers.AsDictionary(),
-                    QueryStrings = Request.Query.AsDictionary(),
-                    Cookies = Request.Cookies.AsDictionary(),
-                    Form =
-                        Request
-                            .Headers["Content-Type"]
-                            .ToString()
-                            .Equals("application/x-www-form-urlencoded", StringComparison.InvariantCultureIgnoreCase) ?
-                        Request
-                            .Form
-                            .AsDictionary() :
-                        new Dictionary<String, String>(),
-                    Body = body
-                }, Formatting.Indented);
+                String response =
+                    JsonSerializer
+                        .Serialize(
+                            new {
+                                Url = Request.GetDisplayUrl(),
+                                ClientIpv6 = connection.RemoteIpAddress.MapToIPv6().ToString(),
+                                ClientIpv4 = connection.RemoteIpAddress.MapToIPv4().ToString(),
+                                ClientPort = connection.RemotePort.ToString(),
+                                Request.IsHttps,
+                                Request.Scheme,
+                                Request.Protocol,
+                                Request.Method,
+                                Request.ContentLength,
+                                Request.ContentType,
+                                Headers = Request.Headers.AsDictionary(),
+                                QueryStrings = Request.Query.AsDictionary(),
+                                Cookies = Request.Cookies.AsDictionary(),
+                                Form =
+                                    Request
+                                        .Headers["Content-Type"]
+                                        .ToString()
+                                        .Equals("application/x-www-form-urlencoded", StringComparison.InvariantCultureIgnoreCase) ?
+                                    Request
+                                        .Form
+                                        .AsDictionary() :
+                                    new Dictionary<String, String>(),
+                                Body = body
+                            },
+                            typeof(Object),
+                            new JsonSerializerOptions { WriteIndented = true });
 
                 var logger = HttpContext.RequestServices.GetService(typeof(ILogger<ApiController>)) as ILogger<ApiController>;
                 logger.LogInformation(response);
@@ -83,10 +88,14 @@ public class ApiController : ControllerBase {
             }
             catch (Exception ex) {
                 Response.StatusCode = 500;
-                return JsonConvert.SerializeObject(new {
-                    Message = "Riku Error",
-                    Error = ex.AsActionResponseViewModel()
-                }, Formatting.Indented);
+                return JsonSerializer
+                    .Serialize(
+                        new {
+                            Message = "Riku Error",
+                            Error = ex.AsActionResponseViewModel()
+                        },
+                        typeof(Object),
+                        new JsonSerializerOptions { WriteIndented = true });
             }
         });
 }
