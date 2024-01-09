@@ -8,6 +8,13 @@ namespace Riku.Controllers;
 
 [ApiController]
 public class ApiController : ControllerBase {
+    [Route("/")]
+    [HttpPost]
+    public async Task<String> DefaultPostAction() => await Return();
+
+    [Route("/")]
+    [HttpGet]
+    public async Task<String> DefaultGetAction() => await Return();
 
     [Route("Post")]
     [HttpPost]
