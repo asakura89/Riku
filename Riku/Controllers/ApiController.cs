@@ -89,13 +89,13 @@ public class ApiController : ControllerBase {
 
                 var logger = HttpContext.RequestServices.GetService(typeof(ILogger<ApiController>)) as ILogger<ApiController>;
                 logger.LogInformation(response);
+                DummyLogger.Log(response);
 
                 Response.StatusCode = status;
                 return response;
             }
             catch (Exception ex) {
-                Response.StatusCode = 500;
-                return JsonSerializer
+                String response = JsonSerializer
                     .Serialize(
                         new {
                             Message = "Riku Error",
@@ -103,6 +103,13 @@ public class ApiController : ControllerBase {
                         },
                         typeof(Object),
                         new JsonSerializerOptions { WriteIndented = true });
+
+                var logger = HttpContext.RequestServices.GetService(typeof(ILogger<ApiController>)) as ILogger<ApiController>;
+                logger.LogInformation(response);
+                DummyLogger.Log(response);
+
+                Response.StatusCode = 500;
+                return response;
             }
         });
 }

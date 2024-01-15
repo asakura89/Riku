@@ -34,21 +34,28 @@ public class AjaxController : ControllerBase {
 
                 var logger = HttpContext.RequestServices.GetService(typeof(ILogger<ApiController>)) as ILogger<ApiController>;
                 logger.LogInformation(String.Join(",\r\n", strings));
+                DummyLogger.Log(String.Join(",\r\n", strings));
 
                 Response.StatusCode = 200;
                 return strings;
             }
             catch (Exception ex) {
+                String response = JsonSerializer
+                    .Serialize(
+                        new {
+                            Message = "Riku Error",
+                            Error = ex.AsActionResponseViewModel()
+                        },
+                        typeof(Object),
+                        new JsonSerializerOptions { WriteIndented = true });
+
+                var logger = HttpContext.RequestServices.GetService(typeof(ILogger<ApiController>)) as ILogger<ApiController>;
+                logger.LogInformation(response);
+                DummyLogger.Log(response);
+
                 Response.StatusCode = 500;
                 return new[] {
-                    JsonSerializer
-                        .Serialize(
-                            new {
-                                Message = "Riku Error",
-                                Error = ex.AsActionResponseViewModel()
-                            },
-                            typeof(Object),
-                            new JsonSerializerOptions { WriteIndented = true })
+                    response
                 };
             }
         });
