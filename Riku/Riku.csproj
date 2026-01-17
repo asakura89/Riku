@@ -10,11 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Ayumi\Ayumi\Exy\ExceptionExt.cs" Link="Vendor\ExceptionExt.cs" />
-    <Compile Include="..\Ayumi\Ayumi\Exy\UnintendedBehaviorException.cs" Link="Vendor\UnintendedBehaviorException.cs" />
-    <Compile Include="..\Ayumi\Ayumi\Arvy\ActionResponseViewModel.cs" Link="Vendor\ActionResponseViewModel.cs" />
-    <Compile Include="..\Ayumi\Ayumi\Arvy\ActionResponseExt.cs" Link="Vendor\ActionResponseExt.cs" />
-    <Compile Include="..\Ayumi\Ayumi\RyaNG\RyandomNumberGenerator.cs" Link="Vendor\RyandomNumberGenerator.cs" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
 
     <Folder Include="wwwroot\" />
   </ItemGroup>
