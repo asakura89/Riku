@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+    <ShortName>YouTube Music</ShortName>
+    <Description>Search for music on YouTube Music</Description>
+    <Tags>youtube music video</Tags>
+    <Image height="16" width="16" type="image/x-icon">https://music.youtube.com/favicon.ico</Image>
+    <Image height="32" width="32" type="image/png">https://music.youtube.com/img/favicon_32.png</Image>
+    <Image height="48" width="48" type="image/png">https://music.youtube.com/img/favicon_48.png</Image>
+    <Image height="96" width="96" type="image/png">https://music.youtube.com/img/favicon_96.png</Image>
+    <Image height="144" width="144" type="image/png">https://music.youtube.com/img/favicon_144.png</Image>
+    <Url type="text/html" template="https://music.youtube.com/search?q={searchTerms}&amp;utm_source=opensearch"></Url>
+</OpenSearchDescription>
