@@ -1,0 +1,19 @@
+{
+    "tasks": {
+        "dev": "deno run --allow-all --watch main.ts",
+        "check": "deno check ./**/*.ts"
+    },
+    "compilerOptions": {
+        "lib": [
+            "es5",
+            "es6",
+            "dom",
+            "deno.ns"
+        ]
+    },
+    "imports": {
+        "@oak/oak": "jsr:@oak/oak@^17.2.0",
+        "@std/fs": "jsr:@std/fs@^1.0.8",
+        "@std/path": "jsr:@std/path@^1.0.8"
+    }
+}
