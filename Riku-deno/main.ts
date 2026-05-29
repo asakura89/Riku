@@ -1,7 +1,11 @@
 import { Application, Router } from "@oak/oak";
 import { log } from "./logger.ts";
+import { extname, fromFileUrl, join } from "@std/path";
+import { type AppConfig, loadConfig } from "./config.ts";
 
-const names = [
+//** ~< Data Setup - Begin >~
+const localKv: Deno.Kv = await Deno.openKv("./data/deno-kv-local.db");
+const commitResult: Deno.KvCommitResult = await localKv.set(["names"], [
     "Clifford",
     "Lewis",
     "Ollie",
@@ -22,59 +26,35 @@ const names = [
     "Donald",
     "Isabella",
     "Patrick",
-];
+]);
 
-const router = new Router();
+/**
+for await (const entry of localKv.list({ prefix: [] })) {
+    console.log(`  ${entry.key.join("/")}: ${JSON.stirngify(entry.value)}`);
+}
+*/
 
-const handleEcho = (ctx: any) => respondWithMetadata(ctx, 200);
-
-router.get("/", handleEcho);
-router.post("/", handleEcho);
-router.post("/post", handleEcho);
-router.get("/get", handleEcho);
-router.put("/put", handleEcho);
-router.patch("/patch", handleEcho);
-router.delete("/delete", handleEcho);
-
-router.get("/status/:status", async (ctx: any) => {
-    const rawStatus = ctx.params?.status ?? "200";
-    const parsedStatus = Number.parseInt(rawStatus, 10);
-    const statusCode = Number.isFinite(parsedStatus) ? parsedStatus : 200;
-    await respondWithMetadata(ctx, statusCode);
-});
-
-router.get("/ajax", async (ctx) => {
-    try {
-        const shuffled = shuffle([...names]);
-        const xml = `<ArrayOfString>${shuffled.map((value) => `<String>${escapeXml(value)}</String>`).join("")}</ArrayOfString>`;
-        ctx.response.status = 200;
-        ctx.response.headers.set("content-type", "application/xml; charset=utf-8");
-        ctx.response.body = xml;
-        await log(shuffled.join(",\r\n"));
+const data: Deno.KvListIterator<unknown> = localKv.list({ prefix: [] });
+for await (const entry of data) {
+    if (entry) {
+        await log("Data been setup.");
     }
-    catch (error) {
-        const errorPayload = serializeError(error);
-        const errorBody = JSON.stringify({ Message: "Riku Error", Error: errorPayload }, null, 4);
-        ctx.response.status = 500;
-        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-        ctx.response.body = errorBody;
-        await log(errorBody);
-    }
-});
+}
 
+const names: string[] = await localKv
+    .get(["names"])
+    .then((result) => {
+        if (result.value && Array.isArray(result.value)) {
+            return result.value as string[];
+        }
+
+        return [];
+    });
+//** ~< Data Setup - End >~
+
+//** ~< Oak App and Commons - Begin >~
 const app = new Application();
-
-app.use(router.routes());
-app.use(router.allowedMethods());
-
-app.addEventListener("listen", () => {
-    void log("OnAppStarted is executing.", { isStarting: true, writeToScreen: true });
-});
-
-app.addEventListener("error", (event) => {
-    void log(`Oak error: ${event.error?.message ?? "unknown"}`, { writeToScreen: true });
-});
-
+const router = new Router();
 async function respondWithMetadata(ctx: any, statusCode: number) {
     try {
         const payload = await buildPayload(ctx);
@@ -134,58 +114,6 @@ async function buildPayload(ctx: any) {
     };
 }
 
-function mapHeaders(headers: Headers) {
-    const result: Record<string, string> = {};
-    headers.forEach((value, key) => {
-        result[key] = value;
-    });
-
-    return result;
-}
-
-function mapQuery(searchParams: URLSearchParams) {
-    const result: Record<string, string> = {};
-    searchParams.forEach((value, key) => {
-        result[key] = value;
-    });
-
-    return result;
-}
-
-async function readBodyText(request: any) {
-    if (!request.hasBody) {
-        return "";
-    }
-
-    const body = request.body({ type: "text" });
-    const value = await body.value;
-    if (typeof value === "string") {
-        return value;
-    }
-
-    if (value instanceof Uint8Array) {
-        return new TextDecoder().decode(value);
-    }
-    return "";
-}
-
-function parseCookies(cookieHeader?: string) {
-    if (!cookieHeader) {
-        return {};
-    }
-
-    return Object.fromEntries(
-        cookieHeader
-            .split(";")
-            .map((pair) => pair.trim())
-            .filter((pair) => pair.includes("="))
-            .map((pair) => {
-                const [name, ...rest] = pair.split("=");
-                return [name.trim(), decodeURIComponent(rest.join("=").trim())];
-            }),
-    );
-}
-
 function serializeError(error: unknown) {
     if (error instanceof Error) {
         return { Name: error.name, Message: error.message, Stack: error.stack };
@@ -217,6 +145,103 @@ function extractConnectionInfo(ctx: any) {
     return { ipAddress, port, protocol };
 }
 
+function mapHeaders(headers: Headers) {
+    const result: Record<string, string> = {};
+    headers.forEach((value, key) => {
+        result[key] = value;
+    });
+
+    return result;
+}
+
+async function readBodyText(request: any) {
+    if (!request.hasBody) {
+        return "";
+    }
+
+    const body = request.body({ type: "text" });
+    const value = await body.value;
+    if (typeof value === "string") {
+        return value;
+    }
+
+    if (value instanceof Uint8Array) {
+        return new TextDecoder().decode(value);
+    }
+    return "";
+}
+
+function mapQuery(searchParams: URLSearchParams) {
+    const result: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+        result[key] = value;
+    });
+
+    return result;
+}
+
+function parseCookies(cookieHeader?: string) {
+    if (!cookieHeader) {
+        return {};
+    }
+
+    return Object.fromEntries(
+        cookieHeader
+            .split(";")
+            .map((pair) => pair.trim())
+            .filter((pair) => pair.includes("="))
+            .map((pair) => {
+                const [name, ...rest] = pair.split("=");
+                return [name.trim(), decodeURIComponent(rest.join("=").trim())];
+            }),
+    );
+}
+//** ~< Oak App and Commons - Begin >~
+
+
+//** ~< Echo endpoints - Begin >~
+const handleEcho = (ctx: any) => respondWithMetadata(ctx, 200);
+
+router.get("/", handleEcho);
+router.post("/", handleEcho);
+router.post("/post", handleEcho);
+router.get("/get", handleEcho);
+router.put("/put", handleEcho);
+router.patch("/patch", handleEcho);
+router.delete("/delete", handleEcho);
+//** ~< Echo endpoints - End >~
+
+
+//** ~< Status endpoints - Begin >~
+router.get("/status/:status", async (ctx: any) => {
+    const rawStatus = ctx.params?.status ?? "200";
+    const parsedStatus = Number.parseInt(rawStatus, 10);
+    const statusCode = Number.isFinite(parsedStatus) ? parsedStatus : 200;
+    await respondWithMetadata(ctx, statusCode);
+});
+//** ~< Status endpoints - End >~
+
+
+//** ~< Ajax endpoints - Begin >~
+router.get("/ajax", async (ctx) => {
+    try {
+        const shuffled = shuffle([...names]);
+        const xml = `<ArrayOfString>${shuffled.map((value) => `<String>${escapeXml(value)}</String>`).join("")}</ArrayOfString>`;
+        ctx.response.status = 200;
+        ctx.response.headers.set("content-type", "application/xml; charset=utf-8");
+        ctx.response.body = xml;
+        await log(shuffled.join(",\r\n"));
+    }
+    catch (error) {
+        const errorPayload = serializeError(error);
+        const errorBody = JSON.stringify({ Message: "Riku Error", Error: errorPayload }, null, 4);
+        ctx.response.status = 500;
+        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
+        ctx.response.body = errorBody;
+        await log(errorBody);
+    }
+});
+
 function shuffle(items: string[]) {
     for (let i = items.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -243,45 +268,151 @@ function escapeXml(value: string) {
         }
     });
 }
+//** ~< Ajax endpoints - End >~
+
+
+//** ~< MockAPI endpoints - Begin >~
+router.get("/mock-api", async (ctx) => {
+    const endpointEntries = await readEndpointEntries();
+
+    ctx.response.status = 200;
+    ctx.response.headers.set("content-type", "application/json; charset=utf-8");
+    ctx.response.body = {
+        message: "Mock API",
+        /*dataDirectory: dataDirectoryPath,*/
+        endpoints: endpointEntries.map((endpointEntry) => endpointEntry.endpointPath),
+    };
+    await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
+});
+
+const supportedHttpMethods = ["GET"]; //["GET", "POST", "PUT", "PATCH", "DELETE"];
+router.all("/mock-api/:resourceName", async (ctx) => {
+    if (!supportedHttpMethods.includes(ctx.request.method.toUpperCase())) {
+        ctx.response.status = 405;
+        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
+        ctx.response.body = { message: "Method not allowed" };
+        await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
+        return;
+    }
+
+    const requestedPath = ctx.request.url.pathname;
+    const endpointEntries = await readEndpointEntries();
+    const matchedEntry = endpointEntries.find((endpointEntry) => endpointEntry.endpointPath === requestedPath);
+
+    if (!matchedEntry) {
+        ctx.response.status = 404;
+        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
+        ctx.response.body = {
+            message: "Endpoint not found",
+            endpoint: requestedPath,
+        };
+        await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
+        return;
+    }
+
+    const responsePayload = await readJsonFile(matchedEntry.filePath);
+
+    ctx.response.status = 200;
+    ctx.response.headers.set("content-type", "application/json; charset=utf-8");
+    ctx.response.body = responsePayload;
+    await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
+});
+
+const pathFromFileURL: string = fromFileUrl(new URL(".", import.meta.url));
+const dataDirectoryPath: string = join(pathFromFileURL, "data");
+async function readEndpointEntries() {
+    const endpointEntries: Array<{ endpointPath: string; filePath: string }> = [];
+
+    for await (const directoryEntry of Deno.readDir(dataDirectoryPath)) {
+        if (!directoryEntry.isFile) {
+            continue;
+        }
+
+        if (extname(directoryEntry.name).toLowerCase() !== ".json") {
+            continue;
+        }
+
+        const resourceName = directoryEntry.name.slice(0, -".json".length);
+        endpointEntries.push({
+            endpointPath: `/${resourceName}`,
+            filePath: join(dataDirectoryPath, directoryEntry.name),
+        });
+    }
+
+    endpointEntries.sort((leftEntry, rightEntry) => leftEntry.endpointPath.localeCompare(rightEntry.endpointPath));
+    return endpointEntries;
+}
+
+async function readJsonFile(filePath: string) {
+    const fileContent = await Deno.readTextFile(filePath);
+    return JSON.parse(fileContent);
+}
+//** ~< MockAPI endpoints - End >~
+
+
+//** ~< Oak middlewares - Begin >~
+app.use(router.routes());
+app.use(router.allowedMethods());
+//** ~< Oak middlewares - End >~
+
+
+//** ~< Deno Server - Begin >~
+app.addEventListener("listen", ({ hostname, port, secure }) => {
+    const protocol = secure ? "https" : "http";
+    void log(`OnAppStarted is executing. ${protocol}://${hostname ?? "localhost"}:${port}`, { writeToFile: true });
+});
+
+app.addEventListener("error", (event) => {
+    void log(`Oak error: ${event.error?.message ?? "unknown"}`, { writeToFile: true });
+});
+
+const signals: Deno.Signal[] = ["SIGINT"]; // ctrl-c
+if (Deno.build.os === "windows") {
+    signals.push("SIGBREAK"); // ctrl-break
+}
+else if (Deno.build.os === "linux" || Deno.build.os === "darwin") {
+    signals.push("SIGTERM"); // ctrl-c
+}
 
 async function main() {
-    const portValue = Number(Deno.env.get("PORT") ?? "5000");
-    const port = Number.isFinite(portValue) ? portValue : 5000;
-    const host = Deno.env.get("HOST") ?? "0.0.0.0";
+    const config: AppConfig = await loadConfig();
     const controller = new AbortController();
     const signal = controller.signal;
 
-    const stopHandler = () => {
-        void log("OnAppStopping is executing.", { writeToScreen: true });
+    const stopHandler = async () => {
+        await log("OnAppStopping is executing.", { writeToFile: true });
         controller.abort();
+        Deno.exit();
     };
 
-    Deno.addSignalListener("SIGINT", stopHandler);
-    //** Deno.addSignalListener("SIGTERM", stopHandler);
-    //** on Windows
-    Deno.addSignalListener("SIGBREAK", stopHandler);
+    for (const sig of signals) {
+        Deno.addSignalListener(sig, stopHandler);
+    }
 
     try {
-        await app.listen({ hostname: host, port, signal });
+        await app.listen({ hostname: config.host, port: config.port, signal });
     }
     catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
             // Expected when the signal aborts the listen call.
+            await log(JSON.stringify(serializeError(error), null, 4), { writeToFile: true });
         }
         else {
-            void log(`Listen failed: ${(error as Error).message ?? "unknown"}`, { writeToScreen: true });
+            await log(`Listen failed: ${(error as Error).message ?? "unknown"}`, { writeToFile: true });
+            await log(JSON.stringify(serializeError(error), null, 4), { writeToFile: true });
             throw error;
         }
     }
     finally {
-        Deno.removeSignalListener("SIGINT", stopHandler);
-        //** Deno.removeSignalListener("SIGTERM", stopHandler);
-        //** on Windows
-        Deno.removeSignalListener("SIGBREAK", stopHandler);
-        await log("OnAppStopped is executing.", { writeToScreen: true });
+        for (const sig of signals) {
+            Deno.removeSignalListener(sig, stopHandler);
+        }
+
+        await log("OnAppStopped is executing.", { writeToFile: true });
     }
 }
 
 if (import.meta.main) {
     await main();
 }
+//** ~< Deno Server - End >~

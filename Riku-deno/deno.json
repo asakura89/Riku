@@ -1,6 +1,6 @@
 {
     "tasks": {
-        "dev": "deno run --allow-all --watch main.ts",
+        "dev": "deno run --unstable-kv --allow-net --allow-env --env-file=.env.local --allow-read=data/ --allow-read=dist/data --allow-read=./ --allow-write --watch main.ts",
         "check": "deno check ./**/*.ts"
     },
     "compilerOptions": {
@@ -8,7 +8,8 @@
             "es5",
             "es6",
             "dom",
-            "deno.ns"
+            "deno.ns",
+            "deno.unstable"
         ]
     },
     "imports": {
