@@ -1,47 +1,31 @@
 # > Visual Studio
-*.cs            text diff=csharp
-*.csx           text diff=csharp
-*.vb            text
-*.fs            text
-*.fsx           text
+*.cs            text eol=crlf diff=csharp
+*.csx           text eol=crlf diff=csharp
+*.vb            text eol=crlf
+*.fs            text eol=crlf
+*.fsx           text eol=crlf
 
-*.sln           text eol=crlf
-*.csproj        text eol=crlf
-*.vbproj        text eol=crlf
-*.vcxproj       text eol=crlf
-*.vcproj        text eol=crlf
-*.dbproj        text eol=crlf
-*.fsproj        text eol=crlf
-*.lsproj        text eol=crlf
-*.wixproj       text eol=crlf
-*.modelproj     text eol=crlf
-*.sqlproj       text eol=crlf
-*.wmaproj       text eol=crlf
+*.sln           text eol=crlf merge=text
+*.csproj        text eol=crlf merge=text
+*.vbproj        text eol=crlf merge=text
+*.vcxproj       text eol=crlf merge=text
+*.vcproj        text eol=crlf merge=text
+*.dbproj        text eol=crlf merge=text
+*.fsproj        text eol=crlf merge=text
+*.lsproj        text eol=crlf merge=text
+*.wixproj       text eol=crlf merge=text
+*.modelproj     text eol=crlf merge=text
+*.sqlproj       text eol=crlf merge=text
+*.wmaproj       text eol=crlf merge=text
+*.wwaproj       text eol=crlf merge=text
 
-*.xproj         text eol=crlf
-*.props         text eol=crlf
-*.filters       text eol=crlf
-*.vcxitems      text eol=crlf
-
-*.sln           merge=text
-*.csproj        merge=text
-*.vbproj        merge=text
-*.vcxproj       merge=text
-*.vcproj        merge=text
-*.dbproj        merge=text
-*.fsproj        merge=text
-*.lsproj        merge=text
-*.wixproj       merge=text
-*.modelproj     merge=text
-*.sqlproj       merge=text
-*.wwaproj       merge=text
-
-*.xproj         merge=text
-*.props         merge=text
-*.filters       merge=text
-*.vcxitems      merge=text
+*.xproj         text eol=crlf merge=text
+*.props         text eol=crlf merge=text
+*.filters       text eol=crlf merge=text
+*.vcxitems      text eol=crlf merge=text
 
 *.dll           binary
+
 
 # > Documents
 *.doc           diff=astextplain
@@ -55,17 +39,17 @@
 *.rtf           diff=astextplain
 *.RTF           diff=astextplain
 
-*.gitattributes text
-.gitignore      text
+.gitattributes  text eol=crlf
+.gitignore      text eol=crlf
 
-*.txt           text
-*.md            text
+*.txt           text eol=crlf merge=text
+*.md            text eol=crlf merge=text
 *.adoc          text
 *.textile       text
 *.mustache      text
-*.csv           text
-*.tab           text
-*.tsv           text
+*.csv           text eol=crlf merge=text
+*.tab           text eol=crlf merge=text
+*.tsv           text eol=crlf merge=text
 
 
 # > Graphics
@@ -81,18 +65,18 @@
 
 
 # > Other
-*.sh            text
-*.cmd           text
-*.sql           text
-*.js            text
+*.sh            text eol=lf
+*.cmd           text eol=crlf
+*.sql           text eol=crlf
+*.js            text eol=crlf
 *.min.js        binary
-*.json          text
-*.css           text
+*.json          text eol=crlf
+*.css           text eol=crlf
 *.min.css       binary
-*.htm           text
-*.html          text
-*.xml           text
-*.resx          text
+*.htm           text eol=crlf
+*.html          text eol=crlf
+*.xml           text eol=crlf
+*.resx          text eol=crlf
 
 
 # > Custom

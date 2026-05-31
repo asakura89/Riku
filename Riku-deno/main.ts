@@ -25,7 +25,7 @@ const commitResult: Deno.KvCommitResult = await localKv.set(["names"], [
     "Susan",
     "Donald",
     "Isabella",
-    "Patrick",
+    "Patrick"
 ]);
 
 /**
@@ -272,8 +272,9 @@ function escapeXml(value: string) {
 
 
 //** ~< MockAPI endpoints - Begin >~
-router.get("/mock-api", async (ctx) => {
-    const endpointEntries = await readEndpointEntries();
+const mockAPIRoute: string = "/mock-api";
+router.get(mockAPIRoute, async (ctx) => {
+    const endpointEntries = await readEndpointEntries(mockAPIRoute);
 
     ctx.response.status = 200;
     ctx.response.headers.set("content-type", "application/json; charset=utf-8");
@@ -296,7 +297,7 @@ router.all("/mock-api/:resourceName", async (ctx) => {
     }
 
     const requestedPath = ctx.request.url.pathname;
-    const endpointEntries = await readEndpointEntries();
+    const endpointEntries = await readEndpointEntries(mockAPIRoute);
     const matchedEntry = endpointEntries.find((endpointEntry) => endpointEntry.endpointPath === requestedPath);
 
     if (!matchedEntry) {
@@ -320,7 +321,7 @@ router.all("/mock-api/:resourceName", async (ctx) => {
 
 const pathFromFileURL: string = fromFileUrl(new URL(".", import.meta.url));
 const dataDirectoryPath: string = join(pathFromFileURL, "data");
-async function readEndpointEntries() {
+async function readEndpointEntries(parent: string = "") {
     const endpointEntries: Array<{ endpointPath: string; filePath: string }> = [];
 
     for await (const directoryEntry of Deno.readDir(dataDirectoryPath)) {
@@ -334,7 +335,7 @@ async function readEndpointEntries() {
 
         const resourceName = directoryEntry.name.slice(0, -".json".length);
         endpointEntries.push({
-            endpointPath: `/${resourceName}`,
+            endpointPath: `${parent}/${resourceName}`,
             filePath: join(dataDirectoryPath, directoryEntry.name),
         });
     }
@@ -382,6 +383,7 @@ async function main() {
     const stopHandler = async () => {
         await log("OnAppStopping is executing.", { writeToFile: true });
         controller.abort();
+        localKv.close();
         Deno.exit();
     };
 

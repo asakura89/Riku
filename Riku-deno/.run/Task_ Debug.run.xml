@@ -3,7 +3,7 @@
         name="Task: Debug"
         type="DenoConfigurationType"
         inputPath="$PROJECT_DIR$/main.ts"
-        programParameters="run --inspect-wait --allow-all">
+        programParameters="run --inspect-wait --unstable-kv --allow-net --allow-env --env-file=.env.local --allow-read=data/ --allow-read=dist/data --allow-read=./ --allow-write main.ts">
         <method v="2" />
     </configuration>
 </component>
