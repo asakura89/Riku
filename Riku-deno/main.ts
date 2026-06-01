@@ -1,11 +1,12 @@
-import { Application, Router } from "@oak/oak";
+import { Application, Router, RouterContext, Request } from "@oak/oak";
+import { ServerRequest } from "https://jsr.io/@oak/oak/17.2.0/types.ts";
 import { log } from "./logger.ts";
 import { extname, fromFileUrl, join } from "@std/path";
 import { type AppConfig, loadConfig } from "./config.ts";
 
 //** ~< Data Setup - Begin >~
 const localKv: Deno.Kv = await Deno.openKv("./data/deno-kv-local.db");
-const commitResult: Deno.KvCommitResult = await localKv.set(["names"], [
+const _commitResult: Deno.KvCommitResult = await localKv.set(["names"], [
     "Clifford",
     "Lewis",
     "Ollie",
@@ -35,10 +36,18 @@ for await (const entry of localKv.list({ prefix: [] })) {
 */
 
 const data: Deno.KvListIterator<unknown> = localKv.list({ prefix: [] });
+let dataCount: number = 0;
 for await (const entry of data) {
     if (entry) {
-        await log("Data been setup.");
+        dataCount++;
     }
+}
+
+if (dataCount > 0) {
+    await log("Data been setup.");
+}
+else {
+    await log("Data empty.");
 }
 
 const names: string[] = await localKv
@@ -53,30 +62,32 @@ const names: string[] = await localKv
 //** ~< Data Setup - End >~
 
 //** ~< Oak App and Commons - Begin >~
-const app = new Application();
-const router = new Router();
+const app: Application<Record<string, any>> = new Application();
+const router: Router<Record<string, any>> = new Router();
 async function respondWithMetadata(ctx: any, statusCode: number) {
     try {
         const payload = await buildPayload(ctx);
         const responseBody = JSON.stringify(payload, null, 4);
-        ctx.response.status = statusCode;
-        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-        ctx.response.body = responseBody;
+        respondWithJson(ctx, statusCode, responseBody);
         await log(responseBody);
     }
     catch (error) {
         const errorPayload = serializeError(error);
-        const errorBody = JSON.stringify({ Message: "Riku Error", Error: errorPayload }, null, 4);
-        ctx.response.status = 500;
-        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-        ctx.response.body = errorBody;
+        const errorBody = JSON.stringify({ Message: "Error occured", Error: errorPayload }, null, 4);
+        respondWithJson(ctx, 500, errorBody);
         await log(errorBody);
     }
 }
 
+function respondWithJson(ctx: any, statusCode: number, body: unknown) {
+    ctx.response.status = statusCode;
+    ctx.response.headers.set("content-type", "application/json; charset=utf-8");
+    ctx.response.body = body;
+}
+
 async function buildPayload(ctx: any) {
-    const request = ctx.request;
-    const connection = extractConnectionInfo(ctx);
+    const request: Request = ctx.request;
+    const connection = extractConnectionInfo(request);
     const url = request.url;
     const headers = mapHeaders(request.headers);
     const bodyText = await readBodyText(request);
@@ -102,7 +113,6 @@ async function buildPayload(ctx: any) {
         ClientPort: connection.port ?? "",
         IsHttps: url.protocol === "https:",
         Scheme: url.protocol.replace(":", ""),
-        Protocol: connection.protocol,
         Method: request.method,
         ContentLength: headers["content-length"] ?? `${bodyText.length}`,
         ContentType: contentType,
@@ -122,27 +132,26 @@ function serializeError(error: unknown) {
     return { Message: "Unknown error" };
 }
 
-function extractConnectionInfo(ctx: any) {
-    const serverRequest = ctx.request.serverRequest;
-    const remoteAddr = serverRequest?.conn?.remoteAddr;
-    let ipAddress = ctx.request.ip ?? "0.0.0.0";
+function extractConnectionInfo(req: Request) {
+    const url: URL = req.url;
+    const ipAddress: string =
+        req.ips.length > 0 ?
+            req.ips.join(",") :
+            "0.0.0.0";
+    let hostname: string = "localhost";
     let port: string | undefined;
 
-    if (remoteAddr) {
-        if ("hostname" in remoteAddr && remoteAddr.hostname) {
-            ipAddress = remoteAddr.hostname;
-        }
-        else if ("address" in remoteAddr && remoteAddr.address) {
-            ipAddress = remoteAddr.address;
+    if (url) {
+        if ("hostname" in url && url.hostname) {
+            hostname = url.hostname;
         }
 
-        if ("port" in remoteAddr && remoteAddr.port !== undefined) {
-            port = `${remoteAddr.port}`;
+        if ("port" in url && url.port) {
+            port = url.port;
         }
     }
 
-    const protocol = serverRequest?.proto ?? "HTTP/1.1";
-    return { ipAddress, port, protocol };
+    return { ipAddress, hostname, port };
 }
 
 function mapHeaders(headers: Headers) {
@@ -154,21 +163,21 @@ function mapHeaders(headers: Headers) {
     return result;
 }
 
-async function readBodyText(request: any) {
-    if (!request.hasBody) {
+async function readBodyText(request: Request) {
+    /** if (!request.hasBody) {
+        return "";
+    }*/
+
+    const body = request.body;
+    if (!body || typeof body.text !== "function") {
         return "";
     }
 
-    const body = request.body({ type: "text" });
-    const value = await body.value;
-    if (typeof value === "string") {
-        return value;
-    }
+    /** if (typeof body.has === "function" && !body.has()) {
+        return "";
+    }*/
 
-    if (value instanceof Uint8Array) {
-        return new TextDecoder().decode(value);
-    }
-    return "";
+    return await body.text();
 }
 
 function mapQuery(searchParams: URLSearchParams) {
@@ -196,6 +205,77 @@ function parseCookies(cookieHeader?: string) {
             }),
     );
 }
+
+function parseResourceKeys(resourceName?: string, rawKeys?: string) {
+    const normalizedResourceName = resourceName?.trim();
+    const keyNames = (rawKeys ?? "")
+        .split(",")
+        .map((keyName) => keyName.trim())
+        .filter((keyName) => keyName.length > 0);
+
+    if (!normalizedResourceName) {
+        void log("resourceName is required.");
+        throw new Error("resourceName is required.");
+    }
+
+    if (keyNames.length === 0) {
+        void log("At least one key is required.");
+        throw new Error("At least one key is required.");
+    }
+
+    return {
+        resourceName: normalizedResourceName,
+        keyNames,
+        kvKeys: keyNames.map((keyName) => [normalizedResourceName, keyName] as Deno.KvKey),
+    };
+}
+
+async function readRequestData(request: Request) {
+    /** if (!request.hasBody) {
+        return undefined;
+    }*/
+
+    const bodyText = await readBodyText(request);
+    if (bodyText.trim() === "") {
+        return undefined;
+    }
+
+    try {
+        return JSON.parse(bodyText);
+    }
+    catch {
+        return bodyText;
+    }
+}
+
+function buildValuesByKey(keyNames: string[], payload: unknown) {
+    if (keyNames.length === 1) {
+        return { [keyNames[0]]: payload };
+    }
+
+    if (Array.isArray(payload)) {
+        if (payload.length !== keyNames.length) {
+            throw new Error("Array body length must match the number of keys.");
+        }
+
+        return Object.fromEntries(keyNames.map((keyName, index) => [keyName, payload[index]]));
+    }
+
+    if (payload && typeof payload === "object") {
+        const payloadRecord = payload as Record<string, unknown>;
+        const missingKeys = keyNames.filter((keyName) => !(keyName in payloadRecord));
+        if (missingKeys.length > 0) {
+            throw new Error(`Body is missing values for keys: ${missingKeys.join(", ")}.`);
+        }
+
+        return Object.fromEntries(keyNames.map((keyName) => [keyName, payloadRecord[keyName]]));
+    }
+
+    throw new Error("Multi-key writes require a JSON object keyed by key name or an array matching the key order.");
+}
+
+type OakRouteParams = Record<string | number, string | undefined>;
+type OakRouteState = Record<string, any>;
 //** ~< Oak App and Commons - Begin >~
 
 
@@ -213,7 +293,11 @@ router.delete("/delete", handleEcho);
 
 
 //** ~< Status endpoints - Begin >~
-router.get("/status/:status", async (ctx: any) => {
+router.get("/status/:status", async (ctx: RouterContext<
+    "/status/:status",
+    {status: string;} &
+    OakRouteParams,
+    OakRouteState>) => {
     const rawStatus = ctx.params?.status ?? "200";
     const parsedStatus = Number.parseInt(rawStatus, 10);
     const statusCode = Number.isFinite(parsedStatus) ? parsedStatus : 200;
@@ -222,8 +306,103 @@ router.get("/status/:status", async (ctx: any) => {
 //** ~< Status endpoints - End >~
 
 
+//** ~< KV data endpoints - Begin >~
+router.get("/data/:resourceName/:key", async (ctx: RouterContext<
+    "/data/:resourceName/:key",
+    {resourceName: string;} &
+    {key: string;} &
+    OakRouteParams,
+    OakRouteState>) => {
+    try {
+        const { resourceName, keyNames, kvKeys } = parseResourceKeys(ctx.params?.resourceName, ctx.params?.key);
+        const entries = await localKv.getMany(kvKeys);
+        const dataByKey = Object.fromEntries(keyNames.map((keyName, index) => [keyName, entries[index]?.value ?? null]));
+
+        respondWithJson(ctx, 200, {
+            resourceName,
+            keys: keyNames,
+            data: keyNames.length === 1 ? dataByKey[keyNames[0]] : dataByKey,
+        });
+    }
+    catch (error) {
+        respondWithJson(ctx, 400, {
+            message: "Invalid data request",
+            error: serializeError(error),
+        });
+    }
+});
+
+async function upsertDataRoute(ctx: any, statusCode: number) {
+    try {
+        const { resourceName, keyNames, kvKeys } = parseResourceKeys(ctx.params?.resourceName, ctx.params?.key);
+        const payload = await readRequestData(ctx.request);
+        const valuesByKey = buildValuesByKey(keyNames, payload);
+
+        const results = await Promise.all(
+            kvKeys.map((kvKey, index) => localKv.set(kvKey, valuesByKey[keyNames[index]])),
+        );
+
+        respondWithJson(ctx, statusCode, {
+            resourceName,
+            keys: keyNames,
+            data: keyNames.length === 1 ? valuesByKey[keyNames[0]] : valuesByKey,
+            versionstamps: Object.fromEntries(keyNames.map((keyName, index) => [keyName, results[index].versionstamp])),
+        });
+    }
+    catch (error) {
+        respondWithJson(ctx, 400, {
+            message: "Invalid data write request",
+            error: serializeError(error),
+        });
+    }
+}
+
+router.post("/data/:resourceName/:key", async (ctx: RouterContext<
+    "/data/:resourceName/:key",
+    {resourceName: string;} &
+    {key: string;} &
+    OakRouteParams,
+    OakRouteState>) => {
+    await upsertDataRoute(ctx, 201);
+});
+
+router.put("/data/:resourceName/:key", async (ctx: RouterContext<
+    "/data/:resourceName/:key",
+    {resourceName: string;} &
+    {key: string;} &
+    OakRouteParams,
+    OakRouteState>) => {
+    await upsertDataRoute(ctx, 200);
+});
+
+router.delete("/data/:resourceName/:key", async (ctx: RouterContext<
+    "/data/:resourceName/:key",
+    {resourceName: string;} &
+    {key: string;} &
+    OakRouteParams,
+    OakRouteState>) => {
+    try {
+        const { resourceName, keyNames, kvKeys } = parseResourceKeys(ctx.params?.resourceName, ctx.params?.key);
+        await Promise.all(kvKeys.map((kvKey) => localKv.delete(kvKey)));
+
+        respondWithJson(ctx, 200, {
+            resourceName,
+            keys: keyNames,
+            deleted: keyNames.length === 1 ? keyNames[0] : keyNames,
+        });
+    }
+    catch (error) {
+        respondWithJson(ctx, 400, {
+            message: "Invalid data delete request",
+            error: serializeError(error),
+        });
+    }
+});
+//** ~< KV data endpoints - End >~
+
+
 //** ~< Ajax endpoints - Begin >~
-router.get("/ajax", async (ctx) => {
+router.get("/ajax", async (ctx: RouterContext<"/ajax", OakRouteParams, OakRouteState>) => {
     try {
         const shuffled = shuffle([...names]);
         const xml = `<ArrayOfString>${shuffled.map((value) => `<String>${escapeXml(value)}</String>`).join("")}</ArrayOfString>`;
@@ -235,9 +414,7 @@ router.get("/ajax", async (ctx) => {
     catch (error) {
         const errorPayload = serializeError(error);
         const errorBody = JSON.stringify({ Message: "Riku Error", Error: errorPayload }, null, 4);
-        ctx.response.status = 500;
-        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-        ctx.response.body = errorBody;
+        respondWithJson(ctx, 500, errorBody);
         await log(errorBody);
     }
 });
@@ -273,25 +450,25 @@ function escapeXml(value: string) {
 
 //** ~< MockAPI endpoints - Begin >~
 const mockAPIRoute: string = "/mock-api";
-router.get(mockAPIRoute, async (ctx) => {
+router.get("/mock-api", async (ctx: RouterContext<"/mock-api", OakRouteParams, OakRouteState>) => {
     const endpointEntries = await readEndpointEntries(mockAPIRoute);
 
-    ctx.response.status = 200;
-    ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-    ctx.response.body = {
+    respondWithJson(ctx, 200, {
         message: "Mock API",
         /*dataDirectory: dataDirectoryPath,*/
         endpoints: endpointEntries.map((endpointEntry) => endpointEntry.endpointPath),
-    };
+    });
     await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
 });
 
 const supportedHttpMethods = ["GET"]; //["GET", "POST", "PUT", "PATCH", "DELETE"];
-router.all("/mock-api/:resourceName", async (ctx) => {
+router.all("/mock-api/:resourceName", async (ctx: RouterContext<
+    "/mock-api/:resourceName",
+    {resourceName: string;} &
+    OakRouteParams,
+    OakRouteState>) => {
     if (!supportedHttpMethods.includes(ctx.request.method.toUpperCase())) {
-        ctx.response.status = 405;
-        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-        ctx.response.body = { message: "Method not allowed" };
+        respondWithJson(ctx, 405, { message: "Method not allowed" });
         await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
         return;
     }
@@ -301,21 +478,16 @@ router.all("/mock-api/:resourceName", async (ctx) => {
     const matchedEntry = endpointEntries.find((endpointEntry) => endpointEntry.endpointPath === requestedPath);
 
     if (!matchedEntry) {
-        ctx.response.status = 404;
-        ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-        ctx.response.body = {
+        respondWithJson(ctx, 404, {
             message: "Endpoint not found",
             endpoint: requestedPath,
-        };
+        });
         await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
         return;
     }
 
     const responsePayload = await readJsonFile(matchedEntry.filePath);
-
-    ctx.response.status = 200;
-    ctx.response.headers.set("content-type", "application/json; charset=utf-8");
-    ctx.response.body = responsePayload;
+    respondWithJson(ctx, 200, responsePayload)
     await log(JSON.stringify({status: ctx.response.status, body: ctx.response.body}, null, 4), { writeToFile: true });
 });
 
